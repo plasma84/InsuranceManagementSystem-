@@ -1,0 +1,434 @@
+<div class="dashboard-container animate-fadeIn" *ngIf="!loading">
+  <!-- Animated Background -->
+  <div class="dashboard-background">
+    <div class="floating-particles">
+      <div class="particle" *ngFor="let i of [1,2,3,4,5,6,7,8,9,10]" 
+           [style.animation-delay]="(i * 0.5) + 's'"></div>
+    </div>
+    <div class="gradient-mesh"></div>
+  </div>
+
+  <nav class="navbar glass-effect animate-slideInUp hover-lift">
+    <div class="nav-brand animate-pulse">
+      <i class="fas fa-shield-alt gradient-text"></i>
+      <span class="gradient-text">AutoInsure Pro</span>
+    </div>
+    
+    <div class="nav-menu">
+      <button class="nav-btn hover-scale animate-slideInLeft" style="animation-delay: 0.1s;" (click)="navigateToProfile()">
+        <i class="fas fa-user-circle"></i>
+        Profile
+      </button>
+      
+      <!-- Customer-specific navigation -->
+      <button *ngIf="isCustomer()" class="nav-btn hover-scale animate-slideInLeft" style="animation-delay: 0.2s;" (click)="navigateToNewProposal()">
+        <i class="fas fa-plus-circle"></i>
+        New Policy
+      </button>
+      
+      <!-- Officer-specific navigation -->
+      <button *ngIf="isOfficer() || isAdmin()" class="nav-btn hover-scale animate-slideInLeft" style="animation-delay: 0.2s;" (click)="navigateToClaimsManagement()">
+        <i class="fas fa-clipboard-check"></i>
+        Manage Claims
+      </button>
+      
+      <button *ngIf="isOfficer() || isAdmin()" class="nav-btn hover-scale animate-slideInLeft" style="animation-delay: 0.25s;" (click)="navigateToProposalReview()">
+        <i class="fas fa-file-invoice"></i>
+        Review Proposals
+      </button>
+      
+      <!-- Common navigation -->
+      <button class="nav-btn hover-scale animate-slideInLeft" style="animation-delay: 0.3s;" (click)="navigateToClaims()">
+        <i class="fas fa-file-medical"></i>
+        <span *ngIf="isCustomer()">My Claims</span>
+        <span *ngIf="isOfficer() || isAdmin()">All Claims</span>
+      </button>
+      
+      <button class="nav-btn logout hover-scale animate-slideInLeft" style="animation-delay: 0.4s;" (click)="logout()">
+        <i class="fas fa-sign-out-alt"></i>
+        Logout
+      </button>
+    </div>
+  </nav>
+
+  <div class="dashboard-content">
+    <!-- Policies and data now load automatically - no manual refresh needed -->
+      <div style="font-family: 'Courier New', monospace; font-size: 0.9rem;">
+        <p><strong>User Email:</strong> {{ user?.email || 'Not set' }}</p>
+        <p><strong>User Role:</strong> {{ user?.role || 'Not set' }}</p>
+        <p><strong>Is Authenticated:</strong> {{ authService.isAuthenticated() ? '✅ Yes' : '❌ No' }}</p>
+        <p><strong>Token Exists:</strong> {{ authService.getToken() ? '✅ Yes' : '❌ No' }}</p>
+        <p><strong>Total Policies Found:</strong> {{ user?.proposals?.length || 0 }}</p>
+        <div *ngIf="!authService.isAuthenticated() || !authService.getToken()" 
+             style="background: #ffebee; padding: 10px; margin: 10px 0; border-radius: 4px; border-left: 4px solid #f44336;">
+          <strong>⚠️ Authentication Issue Detected!</strong>
+          <p style="margin: 5px 0; font-size: 0.9rem;">This explains the 403 errors. Try quick login:</p>
+          <button style="background: #4caf50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 8px; font-size: 0.8rem;" 
+                  (click)="quickLogin()">
+            Customer
+          </button>
+          <button style="background: #ff5722; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 8px; font-size: 0.8rem;" 
+                  (click)="quickOfficerLogin()">
+            Officer
+          </button>
+          <button style="background: #9c27b0; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;" 
+                  (click)="quickAdminLogin()">
+            Admin
+          </button>
+        </div>
+        <div style="margin-top: 10px;">
+          <button style="background: #e91e63; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;" 
+                  (click)="runDashboardDiagnostic()">
+            � Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="welcome-section glass-effect animate-slideInUp hover-lift" style="animation-delay: 0.7s;">
+      <div class="welcome-text">
+        <h1 class="gradient-text animate-slideInLeft" style="animation-delay: 0.9s;">
+          Welcome back, {{ user?.name || 'User' }}!
+          <span *ngIf="isOfficer()" class="role-badge officer">Officer</span>
+          <span *ngIf="isAdmin()" class="role-badge admin">Admin</span>
+        </h1>
+        <p class="animate-slideInLeft" style="animation-delay: 1.1s;">
+          <span *ngIf="isCustomer()">Manage your insurance policies and stay protected on the road.</span>
+          <span *ngIf="isOfficer()">Review claims, approve proposals, and assist customers with their insurance needs.</span>
+          <span *ngIf="isAdmin()">Oversee system operations, manage officers, and ensure smooth business processes.</span>
+        </p>
+      </div>
+      <div class="user-avatar animate-pulse" style="animation-delay: 1.3s;">
+        <i class="fas fa-user-circle" *ngIf="isCustomer()"></i>
+        <i class="fas fa-user-tie" *ngIf="isOfficer()"></i>
+        <i class="fas fa-user-cog" *ngIf="isAdmin()"></i>
+      </div>
+    </div>
+
+    <!-- Customer Statistics (for regular users) -->
+    <div class="stats-grid" *ngIf="isCustomer()">
+      <div class="stat-card policies hover-lift animate-slideInUp" style="animation-delay: 1.5s;">
+        <div class="stat-icon animate-pulse">
+          <i class="fas fa-shield-alt"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.totalPolicies || 0 }}</h3>
+          <p>Total Policies</p>
+        </div>
+      </div>
+
+      <div class="stat-card active hover-lift animate-slideInUp" style="animation-delay: 1.7s;">
+        <div class="stat-icon animate-pulse" style="animation-delay: 0.2s;">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.activePolicies || 0 }}</h3>
+          <p>Active Policies</p>
+        </div>
+      </div>
+
+      <div class="stat-card premium hover-lift animate-slideInUp" style="animation-delay: 1.9s;">
+        <div class="stat-icon animate-pulse" style="animation-delay: 0.4s;">
+          <i class="fas fa-rupee-sign"></i>
+        </div>
+        <div class="stat-content">
+          <h3>₹{{ (stats.totalPremium || 0) | number }}</h3>
+          <p>Total Premium</p>
+        </div>
+      </div>
+
+      <div class="stat-card next-payment hover-lift animate-slideInUp" style="animation-delay: 2.1s;">
+        <div class="stat-icon animate-pulse" style="animation-delay: 0.6s;">
+          <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.nextPayment ? (stats.nextPayment | date:'MMM dd') : 'N/A' }}</h3>
+          <p>Next Payment</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Officer Statistics (for officers and admins) -->
+    <div class="stats-grid" *ngIf="isOfficer() || isAdmin()">
+      <div class="stat-card officer-pending hover-lift animate-slideInUp" style="animation-delay: 1.5s;">
+        <div class="stat-icon animate-pulse">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ officerStats.pendingClaims || 0 }}</h3>
+          <p>Pending Claims</p>
+        </div>
+      </div>
+
+      <div class="stat-card officer-approved hover-lift animate-slideInUp" style="animation-delay: 1.7s;">
+        <div class="stat-icon animate-pulse" style="animation-delay: 0.2s;">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ officerStats.approvedClaims || 0 }}</h3>
+          <p>Approved Claims</p>
+        </div>
+      </div>
+
+      <div class="stat-card officer-rejected hover-lift animate-slideInUp" style="animation-delay: 1.9s;">
+        <div class="stat-icon animate-pulse" style="animation-delay: 0.4s;">
+          <i class="fas fa-times-circle"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ officerStats.rejectedClaims || 0 }}</h3>
+          <p>Rejected Claims</p>
+        </div>
+      </div>
+
+      <div class="stat-card officer-total hover-lift animate-slideInUp" style="animation-delay: 2.1s;">
+        <div class="stat-icon animate-pulse" style="animation-delay: 0.6s;">
+          <i class="fas fa-file-alt"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ officerStats.totalProposalsReviewed || 0 }}</h3>
+          <p>Total Reviewed</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer Policies Section -->
+    <div class="policies-section" *ngIf="isCustomer()">
+      <div class="section-header">
+        <h2>Your Policies</h2>
+        <button class="btn-primary" (click)="navigateToNewProposal()">
+          <i class="fas fa-plus"></i>
+          New Policy
+        </button>
+      </div>
+
+      <div class="policies-grid" *ngIf="hasProposals; else noPolicies">
+        <div 
+          class="policy-card glass-effect hover-lift animate-slideInUp" 
+          *ngFor="let proposal of userProposals; let i = index"
+          [style.border-left-color]="getStatusColor(proposal.status || 'UNKNOWN')"
+          [style.animation-delay]="(i * 0.1) + 's'">
+          
+          <!-- Policy Header -->
+          <div class="policy-header">
+            <div class="policy-type">
+              <i class="fas" 
+                 [class.fa-car]="proposal.vehicleType && proposal.vehicleType.toLowerCase().includes('car')" 
+                 [class.fa-motorcycle]="proposal.vehicleType && proposal.vehicleType.toLowerCase().includes('bike')" 
+                 [class.fa-truck]="proposal.vehicleType && proposal.vehicleType.toLowerCase().includes('truck')"
+                 [class.fa-car-side]="!proposal.vehicleType"></i>
+              <span>{{ proposal.vehicleType || 'Vehicle' }}</span>
+            </div>
+            <div class="policy-status" [style.color]="getStatusColor(proposal.status || 'UNKNOWN')">
+              <i [class]="getStatusIcon(proposal.status || 'UNKNOWN')"></i>
+              <span>{{ proposal.status?.replace('_', ' ') || 'Unknown' }}</span>
+            </div>
+          </div>
+
+          <!-- Vehicle Details -->
+          <div class="policy-details">
+            <div class="detail-row" *ngIf="proposal.vehicleNumber">
+              <span class="detail-label">
+                <i class="fas fa-id-card"></i>
+                Vehicle Number:
+              </span>
+              <span class="detail-value">{{ proposal.vehicleNumber }}</span>
+            </div>
+            <div class="detail-row" *ngIf="proposal.policyPackage">
+              <span class="detail-label">
+                <i class="fas fa-shield-alt"></i>
+                Package:
+              </span>
+              <span class="detail-value package-badge">{{ proposal.policyPackage }}</span>
+            </div>
+            <div class="detail-row" *ngIf="proposal.submissionDate">
+              <span class="detail-label">
+                <i class="fas fa-calendar-plus"></i>
+                Applied On:
+              </span>
+              <span class="detail-value">{{ proposal.submissionDate | date:'mediumDate' }}</span>
+            </div>
+            <div class="detail-row" *ngIf="proposal.paymentDate">
+              <span class="detail-label">
+                <i class="fas fa-credit-card"></i>
+                Payment Date:
+              </span>
+              <span class="detail-value">{{ proposal.paymentDate | date:'mediumDate' }}</span>
+            </div>
+            <div class="detail-row" *ngIf="proposal.transactionId">
+              <span class="detail-label">
+                <i class="fas fa-receipt"></i>
+                Transaction ID:
+              </span>
+              <span class="detail-value transaction-id">{{ proposal.transactionId }}</span>
+            </div>
+          </div>
+
+          <!-- Premium Information -->
+          <div class="policy-premium">
+            <div class="premium-amount">
+              <span class="currency">₹</span>
+              <span class="amount">{{ proposal.premiumAmount || 0 | number:'1.0-0' }}</span>
+              <span class="period">/year</span>
+            </div>
+            <div class="premium-label">Premium Amount</div>
+          </div>
+
+          <!-- Policy Actions -->
+          <div class="policy-actions">
+            <button class="btn-view" title="View Details">
+              <i class="fas fa-eye"></i>
+              View
+            </button>
+            <button class="btn-download" title="Download Policy" *ngIf="proposal.status === 'ACTIVE'">
+              <i class="fas fa-download"></i>
+              Download
+            </button>
+            <button 
+              class="btn-delete" 
+              (click)="deletePolicy(proposal, $event)"
+              [disabled]="isDeleting(proposal.id)"
+              title="Delete Policy">
+              <i class="fas fa-trash" *ngIf="!isDeleting(proposal.id)"></i>
+              <i class="fas fa-spinner fa-spin" *ngIf="isDeleting(proposal.id)"></i>
+              {{ isDeleting(proposal.id) ? 'Deleting...' : 'Delete' }}
+            </button>
+          </div>
+
+          <!-- Policy Footer -->
+          <div class="policy-footer" *ngIf="proposal.status === 'ACTIVE'">
+            <div class="status-badge active">
+              <i class="fas fa-check-circle"></i>
+              Policy Active
+            </div>
+          </div>
+          <div class="policy-footer" *ngIf="proposal.status === 'PROPOSAL_SUBMITTED'">
+            <div class="status-badge pending">
+              <i class="fas fa-clock"></i>
+              Under Review
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #noPolicies>
+        <div class="no-policies-message glass-effect animate-slideInUp hover-lift" style="animation-delay: 2.3s;">
+          <div class="empty-state">
+            <i class="fas fa-shield-alt"></i>
+            <h3>No policies yet</h3>
+            <p>Get started by creating your first insurance policy. It only takes a few minutes!</p>
+            <button class="btn-primary" (click)="navigateToNewProposal()">
+              <i class="fas fa-plus-circle"></i>
+              Create Your First Policy
+            </button>
+          </div>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- Officer Work Section -->
+    <div class="officer-work-section" *ngIf="isOfficer() || isAdmin()">
+      <div class="section-header">
+        <h2>Recent Work</h2>
+        <div class="officer-actions">
+          <button class="btn-primary" (click)="navigateToClaimsManagement()">
+            <i class="fas fa-clipboard-check"></i>
+            Manage Claims
+          </button>
+          <button class="btn-secondary" (click)="navigateToProposalReview()">
+            <i class="fas fa-file-invoice"></i>
+            Review Proposals
+          </button>
+        </div>
+      </div>
+
+      <div class="officer-work-grid">
+        <div class="work-card pending-work glass-effect hover-lift animate-slideInUp" style="animation-delay: 2.3s;">
+          <div class="work-header">
+            <h3><i class="fas fa-clock"></i> Pending Claims</h3>
+            <span class="work-count">{{ officerStats.pendingClaims }}</span>
+          </div>
+          <p>Claims waiting for your review and approval</p>
+          <button class="btn-work" (click)="navigateToClaimsManagement()">
+            Review Now <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <div class="work-card proposal-work glass-effect hover-lift animate-slideInUp" style="animation-delay: 2.5s;">
+          <div class="work-header">
+            <h3><i class="fas fa-file-alt"></i> New Proposals</h3>
+            <span class="work-count">5</span>
+          </div>
+          <p>New insurance proposals requiring evaluation</p>
+          <button class="btn-work" (click)="navigateToProposalReview()">
+            Evaluate <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <div class="work-card recent-work glass-effect hover-lift animate-slideInUp" style="animation-delay: 2.7s;">
+          <div class="work-header">
+            <h3><i class="fas fa-history"></i> Recent Activity</h3>
+            <span class="work-count">{{ officerStats.totalProposalsReviewed }}</span>
+          </div>
+          <p>Total cases handled this month</p>
+          <button class="btn-work" (click)="navigateToClaims()">
+            View All <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions Section (for all users) -->
+    <div class="quick-actions">
+      <h2>Quick Actions</h2>
+      <div class="actions-grid">
+        <button *ngIf="isCustomer()" class="action-card" (click)="navigateToNewProposal()" aria-label="Create new insurance proposal">
+          <i class="fas fa-plus-circle"></i>
+          <h3>New Policy</h3>
+          <p>Get a quote for your vehicle</p>
+        </button>
+        
+        <button class="action-card" (click)="navigateToClaims()" aria-label="File or track claims">
+          <i class="fas fa-file-alt"></i>
+          <h3><span *ngIf="isCustomer()">My </span>Claims</h3>
+          <p><span *ngIf="isCustomer()">File or track</span><span *ngIf="!isCustomer()">Manage all</span> claims</p>
+        </button>
+        
+        <button class="action-card" (click)="navigateToSupport()" aria-label="Get help and support">
+          <i class="fas fa-headset"></i>
+          <h3>Support</h3>
+          <p>Get help and support</p>
+        </button>
+        
+        <button class="action-card" (click)="navigateToProfile()" aria-label="Manage account settings">
+          <i class="fas fa-user-cog"></i>
+          <h3>Settings</h3>
+          <p>Manage your account</p>
+        </button>
+      </div>
+    </div>
+
+<div class="enhanced-loading-container animate-fadeIn" *ngIf="loading">
+  <div class="loading-background">
+    <div class="floating-shapes">
+      <div class="shape shape-1 animate-floatingElements"></div>
+      <div class="shape shape-2 animate-floatingElements" style="animation-delay: 1s;"></div>
+      <div class="shape shape-3 animate-floatingElements" style="animation-delay: 2s;"></div>
+    </div>
+  </div>
+  
+  <div class="loading-content glass-effect animate-bounceIn">
+    <div class="loading-spinner animate-pulse">
+      <div class="spinner-ring"></div>
+      <div class="spinner-ring"></div>
+      <div class="spinner-ring"></div>
+      <i class="fas fa-car animate-glow"></i>
+    </div>
+    <h3 class="gradient-text animate-slideInUp" style="animation-delay: 0.5s;">Loading Dashboard</h3>
+    <p class="animate-slideInUp" style="animation-delay: 0.7s;">Preparing your insurance overview...</p>
+    <div class="loading-dots animate-slideInUp" style="animation-delay: 0.9s;">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+</div>
