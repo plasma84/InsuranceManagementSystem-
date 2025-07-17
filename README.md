@@ -19,3 +19,7 @@ Project Name-----Vehicle Insurance System
 Name --- Sourabh Vishwakarma 
 Gmail id --- vsourabh251@gmail.com
 Superset ID: 5299989 
+
+
+
+Case study question ----  https://drive.google.com/file/d/1NVyV7nbDWDbncmkYwMig1XyEAvwVlzQf/view?usp=drive_link
